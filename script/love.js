@@ -24,26 +24,22 @@ var loaded = false;
 function init() {
   if (loaded) return;
   loaded = true;
-
   var mobile = window.isDevice;
-  var koef = mobile ? 0.6 : 1;
-
+  var koef = mobile ? 0.5 : 1;
   var canvas = document.getElementById("heart");
   var ctx = canvas.getContext("2d");
-
   var width = (canvas.width = koef * innerWidth);
   var height = (canvas.height = koef * innerHeight);
-
   var rand = Math.random;
 
   ctx.fillStyle = "rgba(0,0,0,1)";
   ctx.fillRect(0, 0, width, height);
 
   function drawText() {
-    ctx.font = mobile ? "26px Arial" : "60px Arial";
+    ctx.font = "60px Arial";
     ctx.fillStyle = "lightblue";
     ctx.textAlign = "center";
-    ctx.fillText("I Love You Dita Comel", width / 2, height * 0.75);
+    ctx.fillText("I Love You Dita Comel", width / 2, height / 2.2 + 400);
   }
 
   function heartPosition(rad) {
@@ -71,25 +67,13 @@ function init() {
 
   var traceCount = mobile ? 20 : 50;
   var pointsOrigin = [];
-  var dr = mobile ? 0.25 : 0.1;
-
-  // 🔥 SCALE RESPONSIF
-  var heartScale = mobile ? width * 0.18 : width * 0.12;
-
+  var dr = mobile ? 0.3 : 0.1;
   for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(
-      scaleAndTranslate(heartPosition(i), heartScale, heartScale * 0.06, 0, 0)
-    );
-
+    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 310, 19, 0, 0));
   for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(
-      scaleAndTranslate(heartPosition(i), heartScale * 0.8, heartScale * 0.05, 0, 0)
-    );
-
+    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 250, 15, 0, 0));
   for (var i = 0; i < Math.PI * 2; i += dr)
-    pointsOrigin.push(
-      scaleAndTranslate(heartPosition(i), heartScale * 0.6, heartScale * 0.04, 0, 0)
-    );
+    pointsOrigin.push(scaleAndTranslate(heartPosition(i), 190, 11, 0, 0));
 
   var heartPointsCount = pointsOrigin.length;
   var targetPoints = [];
@@ -98,7 +82,7 @@ function init() {
     for (var i = 0; i < pointsOrigin.length; i++) {
       targetPoints[i] = [
         kx * pointsOrigin[i][0] + width / 2,
-        ky * pointsOrigin[i][1] + height / 2.3,
+        ky * pointsOrigin[i][1] + height / 2.2,
       ];
     }
   }
@@ -110,10 +94,11 @@ function init() {
     e[i] = {
       vx: 0,
       vy: 0,
+      R: 2,
       speed: rand() + 5,
       q: ~~(rand() * heartPointsCount),
       D: 2 * (i % 2) - 1,
-      force: 0.75,
+      force: 0.2 * rand() + 0.7,
       f: "rgba(51, 204, 255, 0.7)",
       trace: Array.from({ length: traceCount }, () => ({ x, y })),
     };
@@ -125,7 +110,7 @@ function init() {
   function loop() {
     var n = -Math.cos(time);
     pulse((1 + n) * 0.5, (1 + n) * 0.5);
-    time += (Math.sin(time) < 0 ? 9 : 1) * config.timeDelta;
+    time += (Math.sin(time) < 0 ? 9 : n > 0.8 ? 0.2 : 1) * config.timeDelta;
 
     ctx.fillStyle = "rgba(0,0,0,.1)";
     ctx.fillRect(0, 0, width, height);
@@ -135,7 +120,17 @@ function init() {
       var q = targetPoints[u.q];
       var dx = u.trace[0].x - q[0];
       var dy = u.trace[0].y - q[1];
-      var length = Math.sqrt(dx * dx + dy * dy) || 1;
+      var length = Math.sqrt(dx * dx + dy * dy);
+
+      if (length < 10) {
+        if (rand() > 0.95) {
+          u.q = ~~(rand() * heartPointsCount);
+        } else {
+          if (rand() > 0.99) u.D *= -1;
+          u.q = (u.q + u.D) % heartPointsCount;
+          if (u.q < 0) u.q += heartPointsCount;
+        }
+      }
 
       u.vx += (-dx / length) * u.speed;
       u.vy += (-dy / length) * u.speed;
@@ -164,11 +159,24 @@ function init() {
 
 function continueMusic() {
   const music = document.getElementById("backgroundMusic");
-  if (!music) return;
+
+  const isMusicPlaying = localStorage.getItem("musicPlaying") === "true";
+  const musicCurrentTime = localStorage.getItem("musicCurrentTime") || 0;
+
+  if (music) {
+    if (isMusicPlaying) {
+      music.currentTime = parseFloat(musicCurrentTime);
+      music.play().catch((error) =>
+        console.log("Music playback failed", error)
+      );
+    }
+  }
 
   document.addEventListener("click", function startMusic() {
-    music.play().catch(() => {});
-    document.removeEventListener("click", startMusic);
+    if (music && !isMusicPlaying) {
+      music.play().catch((error) => console.log("Autoplay prevented", error));
+      document.removeEventListener("click", startMusic);
+    }
   });
 }
 
